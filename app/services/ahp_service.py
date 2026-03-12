@@ -110,3 +110,53 @@ def step_rank(
     # Sắp xếp giảm dần theo điểm
     results.sort(key=lambda x: x["score"], reverse=True)
     return results
+
+
+def step_rank_by_criteria(
+    alternative_scores: List[List[float]],
+    names: List[str],
+    criteria_names: List[str],
+    top_k: int = 3
+) -> List[Dict]:
+    """
+    Xep hang phuong an theo tung tieu chi, moi tieu chi lay top_k phuong an.
+    """
+    if not alternative_scores:
+        return []
+
+    criteria_count = len(alternative_scores[0])
+    for i, scores in enumerate(alternative_scores):
+        if len(scores) != criteria_count:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Phuong an #{i+1} co so tieu chi ({len(scores)}) khong dong nhat voi cac phuong an khac ({criteria_count})."
+            )
+
+    if len(criteria_names) != criteria_count:
+        raise HTTPException(
+            status_code=400,
+            detail=f"So ten tieu chi ({len(criteria_names)}) khong khop voi so tieu chi ({criteria_count})."
+        )
+
+    if len(names) != len(alternative_scores):
+        raise HTTPException(
+            status_code=400,
+            detail=f"So ten phuong an ({len(names)}) khong khop voi so phuong an ({len(alternative_scores)})."
+        )
+
+    limit = min(top_k, len(alternative_scores))
+    result = []
+    for crit_idx, crit_name in enumerate(criteria_names):
+        scored = [
+            {"name": names[alt_idx], "score": round(scores[crit_idx], 4)}
+            for alt_idx, scores in enumerate(alternative_scores)
+        ]
+        scored.sort(key=lambda x: x["score"], reverse=True)
+
+        top_alternatives = [
+            {"rank": rank + 1, "name": item["name"], "score": item["score"]}
+            for rank, item in enumerate(scored[:limit])
+        ]
+        result.append({"criterion": crit_name, "top_alternatives": top_alternatives})
+
+    return result

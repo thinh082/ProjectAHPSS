@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 
 # ─────────────────────────────────────────────
@@ -95,3 +95,31 @@ class RankItem(BaseModel):
 class RankResponse(BaseModel):
     """Output trả về danh sách phương án đã xếp hạng theo thứ tự giảm dần."""
     ranking: List[RankItem]
+
+class CriteriaRankInput(BaseModel):
+    """
+    Input de xep hang theo tung tieu chi.
+    - alternative_scores: Ma tran diem cua tung phuong an theo tung tieu chi
+    - names: Ten phuong an (tuy chon)
+    - criteria_names: Ten tieu chi (tuy chon)
+    - top_k: So luong phuong an cao nhat can lay cho moi tieu chi
+    """
+    alternative_scores: List[List[float]]
+    names: Optional[List[str]] = None
+    criteria_names: Optional[List[str]] = None
+    top_k: int = Field(default=3, ge=1)
+
+
+class CriteriaRankItem(BaseModel):
+    rank: int
+    name: str
+    score: float
+
+
+class CriteriaRankGroup(BaseModel):
+    criterion: str
+    top_alternatives: List[CriteriaRankItem]
+
+
+class CriteriaRankResponse(BaseModel):
+    rankings_by_criteria: List[CriteriaRankGroup]

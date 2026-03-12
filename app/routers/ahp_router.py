@@ -4,14 +4,16 @@ from app.schemas.ahp_schema import (
     NormalizeInput, NormalizeResponse,
     WeightsInput, WeightsResponse,
     ConsistencyInput, ConsistencyResponse,
-    RankInput, RankResponse, RankItem
+    RankInput, RankResponse, RankItem,
+    CriteriaRankInput, CriteriaRankResponse, CriteriaRankGroup, CriteriaRankItem
 )
 from app.services.ahp_service import (
     step_column_sum,
     step_normalize,
     step_weights,
     step_consistency,
-    step_rank
+    step_rank,
+    step_rank_by_criteria
 )
 
 # Tạo router với prefix /ahp và tag AHP để gom nhóm trên Swagger
@@ -88,3 +90,35 @@ def api_rank(body: RankInput):
     ranking_data = step_rank(body.criteria_weights, body.alternative_scores, names)
     ranking = [RankItem(**item) for item in ranking_data]
     return RankResponse(ranking=ranking)
+
+
+@router.post("/rank/by-criteria", response_model=CriteriaRankResponse)
+def api_rank_by_criteria(body: CriteriaRankInput):
+    """
+    Danh gia phuong an theo tung tieu chi va tra ve top_k cho moi tieu chi.
+    """
+    n_alternatives = len(body.alternative_scores)
+    names = body.names if body.names and len(body.names) == n_alternatives else [f"Phuong an {i+1}" for i in range(n_alternatives)]
+
+    criteria_count = len(body.alternative_scores[0]) if body.alternative_scores else 0
+    criteria_names = (
+        body.criteria_names
+        if body.criteria_names and len(body.criteria_names) == criteria_count
+        else [f"Tieu chi {i+1}" for i in range(criteria_count)]
+    )
+
+    ranking_data = step_rank_by_criteria(
+        alternative_scores=body.alternative_scores,
+        names=names,
+        criteria_names=criteria_names,
+        top_k=body.top_k
+    )
+
+    rankings = [
+        CriteriaRankGroup(
+            criterion=item["criterion"],
+            top_alternatives=[CriteriaRankItem(**alt) for alt in item["top_alternatives"]]
+        )
+        for item in ranking_data
+    ]
+    return CriteriaRankResponse(rankings_by_criteria=rankings)
