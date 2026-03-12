@@ -1,0 +1,10 @@
+CREATE TABLE samsung_phones (
+    id SERIAL PRIMARY KEY,
+    mau_dien_thoai VARCHAR(255),
+    gia_usd NUMERIC(10, 2),
+    hieu_nang TEXT,
+    dung_luong_luu_tru VARCHAR(50),
+    chat_luong_camera VARCHAR(50),
+    dung_luong_pin VARCHAR(50),
+    thiet_ke TEXT
+);
