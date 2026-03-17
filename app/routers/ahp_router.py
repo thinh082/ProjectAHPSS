@@ -1,11 +1,15 @@
 from fastapi import APIRouter
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.database import get_db
 from app.schemas.ahp_schema import (
     MatrixInput, ColumnSumResponse,
     NormalizeInput, NormalizeResponse,
     WeightsInput, WeightsResponse,
     ConsistencyInput, ConsistencyResponse,
     RankInput, RankResponse, RankItem,
-    CriteriaRankInput, CriteriaRankResponse, CriteriaRankGroup, CriteriaRankItem
+    CriteriaRankInput, CriteriaRankResponse, CriteriaRankGroup, CriteriaRankItem,
+    CriteriaEvaluationRequest, CriteriaEvaluationResponse
 )
 from app.services.ahp_service import (
     step_column_sum,
@@ -13,7 +17,8 @@ from app.services.ahp_service import (
     step_weights,
     step_consistency,
     step_rank,
-    step_rank_by_criteria
+    step_rank_by_criteria,
+    evaluate_criteria
 )
 
 # Tạo router với prefix /ahp và tag AHP để gom nhóm trên Swagger
@@ -71,6 +76,21 @@ def api_consistency(body: ConsistencyInput):
     """
     result = step_consistency(body.matrix, body.weights)
     return ConsistencyResponse(**result)
+
+
+# ─────────────────────────────────────────────
+# Endpoint 4.5: Đánh giá phương án theo tiêu chí
+# ─────────────────────────────────────────────
+
+@router.post("/criteria-evaluation", response_model=CriteriaEvaluationResponse)
+async def api_criteria_evaluation(
+    body: CriteriaEvaluationRequest,
+    session: AsyncSession = Depends(get_db)
+):
+    """
+    Đánh giá các phương án từ cơ sở dữ liệu dựa trên tiêu chí và tạo ma trận.
+    """
+    return await evaluate_criteria(session, body)
 
 
 # ─────────────────────────────────────────────
