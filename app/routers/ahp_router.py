@@ -22,6 +22,7 @@ from app.services.ahp_service import (
 )
 
 # Tạo router với prefix /ahp và tag AHP để gom nhóm trên Swagger
+# Support 6 criteria evaluation (Thiet Ke)
 router = APIRouter(prefix="/ahp", tags=["AHP Steps"])
 
 
