@@ -7,16 +7,29 @@ import os
 load_dotenv()
 
 # Build the connection string
-# Theo thông tin bạn cung cấp:
-# Host: localhost, Port: 5432, DB: myserver, user: postgres, pass: thinh123
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "thinh123")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "ahp_samsung")
+# Ưu tiên lấy DATABASE_URL trực tiếp từ .env hoặc biến môi trường
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Database URL cho kết nối bất đồng bộ (asyncpg)
-DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+if not DATABASE_URL:
+    # Nếu không có DATABASE_URL, tự xây dựng từ các thành phần lẻ
+    # Mặc định sử dụng thông tin Neon Postgres Online
+    DB_USER = os.getenv("DB_USER", "neondb_owner")
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "npg_tmPI1Fqj0Eoz")
+    DB_HOST = os.getenv("DB_HOST", "ep-misty-silence-anrn45w0-pooler.c-6.us-east-1.aws.neon.tech")
+    DB_PORT = os.getenv("DB_PORT", "5432")
+    DB_NAME = os.getenv("DB_NAME", "neondb")
+    
+    # Đảm bảo dùng driver asyncpg cho SQLAlchemy Async
+    DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?ssl=require"
+else:
+    # Nếu đã có DATABASE_URL, đảm bảo nó sử dụng driver asyncpg
+    if DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if "ssl=require" not in DATABASE_URL and "sslmode=require" not in DATABASE_URL:
+        connector = "&" if "?" in DATABASE_URL else "?"
+        DATABASE_URL += f"{connector}ssl=require"
+    elif "sslmode=require" in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace("sslmode=require", "ssl=require")
 
 # Tạo engine bất đồng bộ
 engine = create_async_engine(DATABASE_URL, echo=True)
