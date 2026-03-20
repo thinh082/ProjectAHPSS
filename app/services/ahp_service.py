@@ -212,6 +212,7 @@ async def evaluate_criteria(session: AsyncSession, request: CriteriaEvaluationRe
         {"id": "C3", "name": "Pin", "col": "dung_luong_pin", "lower_is_better": False},
         {"id": "C4", "name": "Lưu trữ", "col": "dung_luong_luu_tru", "lower_is_better": False},
         {"id": "C5", "name": "Camera", "col": "chat_luong_camera", "lower_is_better": False},
+        {"id": "C6", "name": "Thiết kế", "col": "thiet_ke", "lower_is_better": False},
     ]
     
     tabs = []
