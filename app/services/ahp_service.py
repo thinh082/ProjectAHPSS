@@ -166,6 +166,7 @@ from typing import Any
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import SamsungPhone
+from app.services.hardcoded_matrices import HARDCODED_MATRICES, matrix_str_to_float
 from app.schemas.ahp_schema import (
     CriteriaEvaluationRequest, CriteriaEvaluationResponse, 
     CriteriaTabResponse, LocationHeader
@@ -191,7 +192,7 @@ def get_ahp_scale(ratio: float) -> int:
 
 async def evaluate_criteria(session: AsyncSession, request: CriteriaEvaluationRequest) -> CriteriaEvaluationResponse:
     # 1. Base Query
-    query = select(SamsungPhone)
+    query = select(SamsungPhone).order_by(SamsungPhone.id)
     
     if request.filters:
         if "mau_dien_thoai" in request.filters:
@@ -222,41 +223,47 @@ async def evaluate_criteria(session: AsyncSession, request: CriteriaEvaluationRe
         col_name = crit["col"]
         lower_is_better = crit["lower_is_better"]
         
-        matrix = [[1.0] * n for _ in range(n)]
-        matrix_str = [["1"] * n for _ in range(n)]
-        
-        vals = [parse_numeric(getattr(p, col_name, 0)) for p in phones]
-        
-        for i in range(n):
-            for j in range(n):
-                if i == j:
-                    matrix[i][j] = 1.0
-                    matrix_str[i][j] = "1"
-                elif i < j:
-                    vi = vals[i]
-                    vj = vals[j]
-                    
-                    if vi == 0: vi = 0.1
-                    if vj == 0: vj = 0.1
-                    
-                    if lower_is_better:
-                        ratio = vj / vi
-                    else:
-                        ratio = vi / vj
+        # Ưu tiên dùng hardcoded matrix nếu có, nếu không dùng tính động
+        hardcoded = HARDCODED_MATRICES.get(crit["id"])
+        if hardcoded is not None:
+            matrix_str = [row[:] for row in hardcoded]
+            matrix = matrix_str_to_float(matrix_str)
+        else:
+            matrix = [[1.0] * n for _ in range(n)]
+            matrix_str = [["1"] * n for _ in range(n)]
+            
+            vals = [parse_numeric(getattr(p, col_name, 0)) for p in phones]
+            
+            for i in range(n):
+                for j in range(n):
+                    if i == j:
+                        matrix[i][j] = 1.0
+                        matrix_str[i][j] = "1"
+                    elif i < j:
+                        vi = vals[i]
+                        vj = vals[j]
                         
-                    scale = get_ahp_scale(ratio)
-                    
-                    if ratio >= 1:
-                        matrix[i][j] = float(scale)
-                        matrix[j][i] = 1.0 / scale
-                        matrix_str[i][j] = str(scale)
-                        matrix_str[j][i] = f"1/{scale}"
-                    else:
-                        scale = get_ahp_scale(1/ratio)
-                        matrix[i][j] = 1.0 / scale
-                        matrix[j][i] = float(scale)
-                        matrix_str[i][j] = f"1/{scale}"
-                        matrix_str[j][i] = str(scale)
+                        if vi == 0: vi = 0.1
+                        if vj == 0: vj = 0.1
+                        
+                        if lower_is_better:
+                            ratio = vj / vi
+                        else:
+                            ratio = vi / vj
+                            
+                        scale = get_ahp_scale(ratio)
+                        
+                        if ratio >= 1:
+                            matrix[i][j] = float(scale)
+                            matrix[j][i] = 1.0 / scale
+                            matrix_str[i][j] = str(scale)
+                            matrix_str[j][i] = f"1/{scale}"
+                        else:
+                            scale = get_ahp_scale(1/ratio)
+                            matrix[i][j] = 1.0 / scale
+                            matrix[j][i] = float(scale)
+                            matrix_str[i][j] = f"1/{scale}"
+                            matrix_str[j][i] = str(scale)
         
         local_weights = []
         cr = 0.0
